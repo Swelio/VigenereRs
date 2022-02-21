@@ -1,7 +1,13 @@
 [package]
 name = "vigenere"
+description = "Vigenere toy program to encrypt, decrypt, and crack classic Vigenere cipher (english only)."
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/Swelio/VigenereRs.git"
+readme = "README.md"
+keywords = ["education", "cryptography"]
+categories = ["algorithms"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

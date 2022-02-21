@@ -1,6 +1,6 @@
 //! Vigenere toy program to encrypt, decrypt, and crack classic Vigenere cipher (english).
 
-#![deny(clippy::all)]
+#![deny(clippy::cargo, clippy::all)]
 
 mod engine;
 
