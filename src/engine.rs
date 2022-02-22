@@ -1,62 +1,115 @@
 //! Vigenere engine to encrypt, decrypt, crack
 
+use std::iter::Cycle;
+use std::str::Bytes;
+
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
+#[derive(Copy, Clone)]
 enum TranformationMode {
     Encryption,
     Decryption,
 }
 
-fn transformer(transformed_text: &str, key: &str, mode: TranformationMode) -> String {
-    let mut result = String::with_capacity(transformed_text.len());
+pub struct VigenereCipher<'key, 'text> {
+    key_iterator: Cycle<Bytes<'key>>,
+    text_iterator: Bytes<'text>,
+    mode: TranformationMode,
+}
 
-    let mut key_iterator = key.chars().map(|c| c.to_ascii_uppercase() as isize).cycle();
-    let text_iterator = transformed_text.chars();
+pub struct VigenereWantsKey;
+pub struct VigenereWantsMode<'key> {
+    key_iterator: Cycle<Bytes<'key>>,
+}
+pub struct VigenereWantsText<'key> {
+    key_iterator: Cycle<Bytes<'key>>,
+    mode: TranformationMode,
+}
 
-    for char in text_iterator {
-        if ALPHABET.contains(char.to_ascii_uppercase()) {
-            let key_char = key_iterator.next().unwrap();
-            let operated_char = char.to_ascii_uppercase() as isize;
+impl<'key, 'text> VigenereCipher<'key, 'text> {
+    pub fn build() -> VigenereWantsKey {
+        VigenereWantsKey
+    }
+}
 
-            let transformed_char_index = match mode {
-                TranformationMode::Encryption => operated_char + key_char,
-                TranformationMode::Decryption => operated_char - key_char,
+impl<'key, 'text> Iterator for VigenereCipher<'key, 'text> {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let char = match self.text_iterator.next() {
+            None => return None,
+            Some(char) => char,
+        };
+
+        if ALPHABET.contains(char.to_ascii_uppercase() as char) {
+            let key_char = self.key_iterator.next().unwrap().to_ascii_uppercase() as isize;
+            let indexed_char = char.to_ascii_uppercase() as isize;
+
+            let char_index = match self.mode {
+                TranformationMode::Encryption => indexed_char + key_char,
+                TranformationMode::Decryption => indexed_char - key_char,
             }
             .rem_euclid(ALPHABET.len() as isize) as usize;
-            let mut transformed_char = ALPHABET.as_bytes()[transformed_char_index] as char;
+            let transformed_char = ALPHABET.as_bytes()[char_index] as char;
 
             if char.is_ascii_uppercase() {
-                transformed_char = transformed_char.to_ascii_uppercase();
+                Some(transformed_char.to_ascii_uppercase())
             } else {
-                transformed_char = transformed_char.to_ascii_lowercase();
+                Some(transformed_char.to_ascii_lowercase())
             }
-
-            result.push(transformed_char);
         } else {
-            result.push(char);
+            Some(char as char)
+        }
+    }
+}
+
+impl VigenereWantsKey {
+    pub fn with_key_string(self, key: &str) -> VigenereWantsMode {
+        VigenereWantsMode {
+            key_iterator: key.bytes().cycle(),
+        }
+    }
+}
+
+impl<'key> VigenereWantsMode<'key> {
+    pub fn encrypt(&self) -> VigenereWantsText<'key> {
+        VigenereWantsText {
+            key_iterator: self.key_iterator.clone(),
+            mode: TranformationMode::Encryption,
         }
     }
 
-    result
+    pub fn decrypt(&self) -> VigenereWantsText<'key> {
+        VigenereWantsText {
+            key_iterator: self.key_iterator.clone(),
+            mode: TranformationMode::Decryption,
+        }
+    }
 }
 
-pub fn encrypt(clear_text: &str, key: &str) -> String {
-    transformer(clear_text, key, TranformationMode::Encryption)
-}
-
-pub fn decrypt(cipher_text: &str, key: &str) -> String {
-    transformer(cipher_text, key, TranformationMode::Decryption)
+impl<'key, 'text> VigenereWantsText<'key> {
+    pub fn with_text_string(self, transformed_text: &'text str) -> VigenereCipher<'key, 'text> {
+        VigenereCipher {
+            key_iterator: self.key_iterator,
+            text_iterator: transformed_text.bytes(),
+            mode: self.mode,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{decrypt, encrypt};
+    use super::VigenereCipher;
 
     #[test]
     fn test_encryption() {
         let clear_text = "Hello, Friend";
         let key = "MrRobot";
-        let cipher_text = encrypt(clear_text, key);
+        let cipher = VigenereCipher::build()
+            .with_key_string(key)
+            .encrypt()
+            .with_text_string(clear_text);
+        let cipher_text: String = cipher.collect();
 
         assert_eq!(cipher_text, "Tvczp, Tkuver");
     }
@@ -65,7 +118,11 @@ mod tests {
     fn test_decryption() {
         let cipher_text = "Tvczp, Tkuver";
         let key = "MrRobot";
-        let clear_text = decrypt(cipher_text, key);
+        let cipher = VigenereCipher::build()
+            .with_key_string(key)
+            .decrypt()
+            .with_text_string(cipher_text);
+        let clear_text: String = cipher.collect();
 
         assert_eq!(clear_text, "Hello, Friend");
     }
@@ -75,9 +132,10 @@ mod tests {
     fn test_full_cipher() {
         let original_text = "Hello, Friend";
         let key = "MrRobot";
+        let cipher = VigenereCipher::build().with_key_string(key);
 
-        let encrypted_text = encrypt(original_text, key);
-        let decrypted_text = decrypt(&encrypted_text, key);
+        let encrypted_text: String = cipher.encrypt().with_text_string(original_text).collect();
+        let decrypted_text: String = cipher.decrypt().with_text_string(&encrypted_text).collect();
 
         assert_eq!(original_text, decrypted_text);
     }
