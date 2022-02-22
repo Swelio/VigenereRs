@@ -2,7 +2,7 @@
 
 #![deny(clippy::cargo, clippy::all)]
 
-mod engine;
+mod lib;
 
 use clap::{ArgGroup, Parser};
 
