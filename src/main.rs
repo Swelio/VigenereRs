@@ -5,7 +5,7 @@
 mod lib;
 
 use clap::{ArgGroup, Parser};
-use lib::VigenereCipher;
+use lib::VigenereBuilder;
 
 /// Vigenere toy program to encrypt, decrypt, and crack classic Vigenere cipher (english only).
 #[derive(Parser)]
@@ -47,7 +47,7 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
-    let cipher = VigenereCipher::build();
+    let cipher = VigenereBuilder::build();
 
     let cipher = match &cli.key {
         Some(key_file) => cipher.with_key_string(key_file),

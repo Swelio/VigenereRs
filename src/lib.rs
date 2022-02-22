@@ -1,7 +1,6 @@
 //! Vigenere engine to encrypt, decrypt, crack
 
-use std::iter::Cycle;
-use std::str::Bytes;
+use std::iter::{Cycle, Iterator};
 
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -11,28 +10,69 @@ enum ProcessingMode {
     Decryption,
 }
 
-pub struct VigenereCipher<'key, 'text> {
-    key_iterator: Cycle<Bytes<'key>>,
-    text_iterator: Bytes<'text>,
+pub struct VigenereBuilder;
+pub struct VigenereWantsMode<K> {
+    key_iterator: Cycle<K>,
+}
+pub struct VigenereWantsText<K> {
+    key_iterator: Cycle<K>,
+    mode: ProcessingMode,
+}
+pub struct VigenereCipher<K, M> {
+    key_iterator: Cycle<K>,
+    text_iterator: M,
     mode: ProcessingMode,
 }
 
-pub struct VigenereWantsKey;
-pub struct VigenereWantsMode<'key> {
-    key_iterator: Cycle<Bytes<'key>>,
-}
-pub struct VigenereWantsText<'key> {
-    key_iterator: Cycle<Bytes<'key>>,
-    mode: ProcessingMode,
-}
+impl VigenereBuilder {
+    pub fn build() -> Self {
+        Self
+    }
 
-impl<'key, 'text> VigenereCipher<'key, 'text> {
-    pub fn build() -> VigenereWantsKey {
-        VigenereWantsKey
+    pub fn with_key_string(self, key: &str) -> VigenereWantsMode<std::str::Bytes> {
+        VigenereWantsMode {
+            key_iterator: key.bytes().cycle(),
+        }
     }
 }
 
-impl<'key, 'text> Iterator for VigenereCipher<'key, 'text> {
+impl<K> VigenereWantsMode<K>
+where
+    K: Clone + Iterator,
+{
+    pub fn encrypt(&self) -> VigenereWantsText<K> {
+        VigenereWantsText {
+            key_iterator: self.key_iterator.clone(),
+            mode: ProcessingMode::Encryption,
+        }
+    }
+
+    pub fn decrypt(&self) -> VigenereWantsText<K> {
+        VigenereWantsText {
+            key_iterator: self.key_iterator.clone(),
+            mode: ProcessingMode::Decryption,
+        }
+    }
+}
+
+impl<K> VigenereWantsText<K> {
+    pub fn with_text_string(self, processed_text: &str) -> VigenereCipher<K, std::str::Bytes>
+    where
+        K: Clone + Iterator,
+    {
+        VigenereCipher {
+            key_iterator: self.key_iterator,
+            text_iterator: processed_text.bytes(),
+            mode: self.mode,
+        }
+    }
+}
+
+impl<K, M> Iterator for VigenereCipher<K, M>
+where
+    K: Clone + Iterator<Item = u8>,
+    M: Clone + Iterator<Item = u8>,
+{
     type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -60,83 +100,5 @@ impl<'key, 'text> Iterator for VigenereCipher<'key, 'text> {
         } else {
             Some(char as char)
         }
-    }
-}
-
-impl VigenereWantsKey {
-    pub fn with_key_string(self, key: &str) -> VigenereWantsMode {
-        VigenereWantsMode {
-            key_iterator: key.bytes().cycle(),
-        }
-    }
-}
-
-impl<'key> VigenereWantsMode<'key> {
-    pub fn encrypt(&self) -> VigenereWantsText<'key> {
-        VigenereWantsText {
-            key_iterator: self.key_iterator.clone(),
-            mode: ProcessingMode::Encryption,
-        }
-    }
-
-    pub fn decrypt(&self) -> VigenereWantsText<'key> {
-        VigenereWantsText {
-            key_iterator: self.key_iterator.clone(),
-            mode: ProcessingMode::Decryption,
-        }
-    }
-}
-
-impl<'key, 'text> VigenereWantsText<'key> {
-    pub fn with_text_string(self, processed_text: &'text str) -> VigenereCipher<'key, 'text> {
-        VigenereCipher {
-            key_iterator: self.key_iterator,
-            text_iterator: processed_text.bytes(),
-            mode: self.mode,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::VigenereCipher;
-
-    #[test]
-    fn test_encryption() {
-        let clear_text = "Hello, Friend";
-        let key = "MrRobot";
-        let cipher = VigenereCipher::build()
-            .with_key_string(key)
-            .encrypt()
-            .with_text_string(clear_text);
-        let cipher_text: String = cipher.collect();
-
-        assert_eq!(cipher_text, "Tvczp, Tkuver");
-    }
-
-    #[test]
-    fn test_decryption() {
-        let cipher_text = "Tvczp, Tkuver";
-        let key = "MrRobot";
-        let cipher = VigenereCipher::build()
-            .with_key_string(key)
-            .decrypt()
-            .with_text_string(cipher_text);
-        let clear_text: String = cipher.collect();
-
-        assert_eq!(clear_text, "Hello, Friend");
-    }
-
-    /// Test full cipher pipeline: encryption then decryption
-    #[test]
-    fn test_full_cipher() {
-        let original_text = "Hello, Friend";
-        let key = "MrRobot";
-        let cipher = VigenereCipher::build().with_key_string(key);
-
-        let encrypted_text: String = cipher.encrypt().with_text_string(original_text).collect();
-        let decrypted_text: String = cipher.decrypt().with_text_string(&encrypted_text).collect();
-
-        assert_eq!(original_text, decrypted_text);
     }
 }
