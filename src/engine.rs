@@ -6,7 +6,7 @@ use std::str::Bytes;
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 #[derive(Copy, Clone)]
-enum TranformationMode {
+enum ProcessingMode {
     Encryption,
     Decryption,
 }
@@ -14,7 +14,7 @@ enum TranformationMode {
 pub struct VigenereCipher<'key, 'text> {
     key_iterator: Cycle<Bytes<'key>>,
     text_iterator: Bytes<'text>,
-    mode: TranformationMode,
+    mode: ProcessingMode,
 }
 
 pub struct VigenereWantsKey;
@@ -23,7 +23,7 @@ pub struct VigenereWantsMode<'key> {
 }
 pub struct VigenereWantsText<'key> {
     key_iterator: Cycle<Bytes<'key>>,
-    mode: TranformationMode,
+    mode: ProcessingMode,
 }
 
 impl<'key, 'text> VigenereCipher<'key, 'text> {
@@ -46,16 +46,16 @@ impl<'key, 'text> Iterator for VigenereCipher<'key, 'text> {
             let indexed_char = char.to_ascii_uppercase() as isize;
 
             let char_index = match self.mode {
-                TranformationMode::Encryption => indexed_char + key_char,
-                TranformationMode::Decryption => indexed_char - key_char,
+                ProcessingMode::Encryption => indexed_char + key_char,
+                ProcessingMode::Decryption => indexed_char - key_char,
             }
             .rem_euclid(ALPHABET.len() as isize) as usize;
-            let transformed_char = ALPHABET.as_bytes()[char_index] as char;
+            let processed_char = ALPHABET.as_bytes()[char_index] as char;
 
             if char.is_ascii_uppercase() {
-                Some(transformed_char.to_ascii_uppercase())
+                Some(processed_char.to_ascii_uppercase())
             } else {
-                Some(transformed_char.to_ascii_lowercase())
+                Some(processed_char.to_ascii_lowercase())
             }
         } else {
             Some(char as char)
@@ -75,23 +75,23 @@ impl<'key> VigenereWantsMode<'key> {
     pub fn encrypt(&self) -> VigenereWantsText<'key> {
         VigenereWantsText {
             key_iterator: self.key_iterator.clone(),
-            mode: TranformationMode::Encryption,
+            mode: ProcessingMode::Encryption,
         }
     }
 
     pub fn decrypt(&self) -> VigenereWantsText<'key> {
         VigenereWantsText {
             key_iterator: self.key_iterator.clone(),
-            mode: TranformationMode::Decryption,
+            mode: ProcessingMode::Decryption,
         }
     }
 }
 
 impl<'key, 'text> VigenereWantsText<'key> {
-    pub fn with_text_string(self, transformed_text: &'text str) -> VigenereCipher<'key, 'text> {
+    pub fn with_text_string(self, processed_text: &'text str) -> VigenereCipher<'key, 'text> {
         VigenereCipher {
             key_iterator: self.key_iterator,
-            text_iterator: transformed_text.bytes(),
+            text_iterator: processed_text.bytes(),
             mode: self.mode,
         }
     }
