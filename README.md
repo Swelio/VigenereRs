@@ -9,6 +9,8 @@ Toy program to encrypt, decrypt, and crack classic Vigenere cipher (english only
 
 Take note this cipher is case-insensitive.
 
+## Usage
+
 ````shell
 vigenere 0.1.0
 Toy program to encrypt, decrypt, and crack classic Vigenere cipher (english only).
@@ -26,3 +28,11 @@ OPTIONS:
     -T, --text-file <TEXT_FILE>    Path of text to process
     -V, --version                  Print version information
 ````
+
+## Features
+
+- [x] Encryption/decryption with key from command line
+- [x] Encryption/decryption with text from command line
+- [ ] Encryption/decryption with key from file
+- [ ] Encryption/decryption with text from file
+- [ ] Cracking of english text
