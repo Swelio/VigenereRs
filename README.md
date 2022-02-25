@@ -34,5 +34,5 @@ OPTIONS:
 - [x] Encryption/decryption with key from command line
 - [x] Encryption/decryption with text from command line
 - [ ] Encryption/decryption with key from file
-- [ ] Encryption/decryption with text from file
+- [x] Encryption/decryption with text from file
 - [ ] Cracking of english text
