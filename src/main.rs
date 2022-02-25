@@ -64,7 +64,10 @@ fn main() {
 
     let cipher = match &cli.text {
         Some(text) => cipher.with_text_string(text),
-        None => todo!(),
+        None => match &cli.text_file {
+            Some(path) => cipher.with_text_file(path),
+            None => panic!("no text provided neither from args nor from file"),
+        },
     };
 
     for char in cipher {

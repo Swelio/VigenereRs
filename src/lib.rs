@@ -1,6 +1,9 @@
 //! Vigenere engine to encrypt, decrypt, crack
 
+use std::fs;
+use std::io::{BufReader, Read};
 use std::iter::{Cycle, Iterator};
+use std::path::Path;
 
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -18,9 +21,12 @@ pub struct VigenereWantsText<K> {
     key_iterator: Cycle<K>,
     mode: ProcessingMode,
 }
-pub struct VigenereCipher<K, M> {
+pub struct VigenereCipher<'txt, K>
+where
+    K: Clone + Iterator<Item = u8>,
+{
     key_iterator: Cycle<K>,
-    text_iterator: M,
+    text_iterator: Box<dyn Iterator<Item = u8> + 'txt>,
     mode: ProcessingMode,
 }
 
@@ -55,23 +61,36 @@ where
     }
 }
 
-impl<K> VigenereWantsText<K> {
-    pub fn with_text_string(self, processed_text: &str) -> VigenereCipher<K, std::str::Bytes>
-    where
-        K: Clone + Iterator,
-    {
+impl<K> VigenereWantsText<K>
+where
+    K: Clone + Iterator<Item = u8>,
+{
+    pub fn with_text_string(self, processed_text: &str) -> VigenereCipher<K> {
         VigenereCipher {
             key_iterator: self.key_iterator,
-            text_iterator: processed_text.bytes(),
+            text_iterator: Box::new(processed_text.bytes()),
+            mode: self.mode,
+        }
+    }
+
+    pub fn with_text_file<'txt, P>(self, processed_path: P) -> VigenereCipher<'txt, K>
+    where
+        P: AsRef<Path>,
+    {
+        let processed_file = fs::File::open(processed_path).unwrap();
+        let file_reader = BufReader::new(processed_file);
+
+        VigenereCipher {
+            key_iterator: self.key_iterator,
+            text_iterator: Box::new(file_reader.bytes().map(|byte| byte.unwrap())),
             mode: self.mode,
         }
     }
 }
 
-impl<K, M> Iterator for VigenereCipher<K, M>
+impl<'txt, K> Iterator for VigenereCipher<'txt, K>
 where
     K: Clone + Iterator<Item = u8>,
-    M: Clone + Iterator<Item = u8>,
 {
     type Item = char;
 
