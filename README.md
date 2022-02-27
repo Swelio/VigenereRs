@@ -16,23 +16,29 @@ vigenere 0.1.0
 Toy program to encrypt, decrypt, and crack classic Vigenere cipher (english only).
 
 USAGE:
-    vigenere.exe <--encrypt|--decrypt> <--key <KEY>|--key-file <KEY_FILE>> <--text <TEXT>|--text-file <TEXT_FILE>>
+    vigenere <--encrypt|--decrypt> <--key <KEY>|--key-file <KEY_FILE>> <--text <TEXT>|--text-file <TEXT_FILE>>
 
 OPTIONS:
-    -D, --decrypt                  Decrypt mode
-    -E, --encrypt                  Encrypt mode
-    -h, --help                     Print help information
-    -k, --key <KEY>                Key as string
-    -K, --key-file <KEY_FILE>      Path to key file
+    -h, --help       Print help information
+    -V, --version    Print version information
+
+Modes:
+    -D, --decrypt    Decrypt provided text
+    -E, --encrypt    Encrypt provided text
+
+Key options:
+    -k, --key <KEY>              Key as string
+    -K, --key-file <KEY_FILE>    Path to key file
+
+Text options:
     -t, --text <TEXT>              Text to process, as string
     -T, --text-file <TEXT_FILE>    Path of text to process
-    -V, --version                  Print version information
 ````
 
 ## Features
 
 - [x] Encryption/decryption with key from command line
 - [x] Encryption/decryption with text from command line
-- [ ] Encryption/decryption with key from file
+- [x] Encryption/decryption with key from file
 - [x] Encryption/decryption with text from file
 - [ ] Cracking of english text

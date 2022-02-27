@@ -14,34 +14,35 @@ use lib::VigenereBuilder;
 #[clap(group(ArgGroup::new("keys").required(true)))]
 #[clap(group(ArgGroup::new("texts").required(true)))]
 struct Cli {
-    /// Encrypt mode
+    /// Encrypt provided text
     #[clap(
         short = 'E',
         long = "encrypt",
         group = "modes",
         takes_value = false,
-        conflicts_with = "decrypt-mode"
+        conflicts_with = "decrypt-mode",
+        help_heading = Some("Modes")
     )]
     encrypt_mode: bool,
 
-    /// Decrypt mode
-    #[clap(short = 'D', long = "decrypt", group = "modes", takes_value = false)]
+    /// Decrypt provided text
+    #[clap(short = 'D', long = "decrypt", group = "modes", takes_value = false, help_heading = Some("Modes"))]
     decrypt_mode: bool,
 
     /// Key as string
-    #[clap(short = 'k', long, group = "keys", conflicts_with = "key-file")]
+    #[clap(short = 'k', long, group = "keys", conflicts_with = "key-file", help_heading = Some("Key options"))]
     key: Option<String>,
 
     /// Path to key file
-    #[clap(short = 'K', long, group = "keys")]
+    #[clap(short = 'K', long, group = "keys", help_heading = Some("Key options"))]
     key_file: Option<String>,
 
     /// Text to process, as string
-    #[clap(short = 't', long, group = "texts", conflicts_with = "text-file")]
+    #[clap(short = 't', long, group = "texts", conflicts_with = "text-file", help_heading = Some("Text options"))]
     text: Option<String>,
 
     /// Path of text to process
-    #[clap(short = 'T', long, group = "texts")]
+    #[clap(short = 'T', long, group = "texts", help_heading = Some("Text options"))]
     text_file: Option<String>,
 }
 
@@ -51,7 +52,10 @@ fn main() {
 
     let cipher = match &cli.key {
         Some(key_file) => cipher.with_key_string(key_file),
-        None => todo!(),
+        None => match &cli.key_file {
+            Some(path) => cipher.with_key_file(path),
+            None => panic!("no key provided neither from args nor from file"),
+        },
     };
 
     let cipher = if cli.encrypt_mode {

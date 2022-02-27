@@ -44,10 +44,10 @@ fn test_string_full_cipher() {
 
 /// Test full cipher pipeline on files: encryption then decryption
 #[test]
-fn test_file_full_cipher() {
+fn test_files_full_cipher() {
     let original_text_path = "tests/data/text.txt";
-    let key = "MrRobot";
-    let cipher = VigenereBuilder::build().with_key_string(key);
+    let key_path = "tests/data/key.txt";
+    let cipher = VigenereBuilder::build().with_key_file(key_path);
     let mut original_text = String::new();
     fs::File::open(original_text_path)
         .unwrap()

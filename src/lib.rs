@@ -1,7 +1,7 @@
 //! Vigenere engine to encrypt, decrypt, crack
 
 use std::fs;
-use std::io::{BufReader, Read};
+use std::io::{self, BufReader, Read};
 use std::iter::{Cycle, Iterator};
 use std::path::Path;
 
@@ -13,21 +13,74 @@ enum ProcessingMode {
     Decryption,
 }
 
-pub struct VigenereBuilder;
-pub struct VigenereWantsMode<K> {
-    key_iterator: Cycle<K>,
+#[derive(Clone)]
+enum KeyIterator<'a> {
+    StringKey(std::str::Bytes<'a>),
+    FileKey(KeyFileIterator),
 }
-pub struct VigenereWantsText<K> {
-    key_iterator: Cycle<K>,
+
+impl<'a> Iterator for KeyIterator<'a> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            KeyIterator::StringKey(it) => it.next(),
+            KeyIterator::FileKey(it) => it.next(),
+        }
+    }
+}
+
+pub struct KeyFileIterator {
+    key_path: String,
+    key_reader: io::Bytes<BufReader<fs::File>>,
+}
+
+pub struct VigenereBuilder;
+pub struct VigenereWantsMode<'key> {
+    key_iterator: Cycle<KeyIterator<'key>>,
+}
+pub struct VigenereWantsText<'key> {
+    key_iterator: Cycle<KeyIterator<'key>>,
     mode: ProcessingMode,
 }
-pub struct VigenereCipher<'txt, K>
-where
-    K: Clone + Iterator<Item = u8>,
-{
-    key_iterator: Cycle<K>,
+pub struct VigenereCipher<'txt, 'key> {
+    key_iterator: Cycle<KeyIterator<'key>>,
     text_iterator: Box<dyn Iterator<Item = u8> + 'txt>,
     mode: ProcessingMode,
+}
+
+impl KeyFileIterator {
+    fn new(path: &str) -> Self {
+        let key_file = fs::File::open(path.to_string()).unwrap();
+        let key_reader = BufReader::new(key_file.try_clone().unwrap()).bytes();
+
+        Self {
+            key_path: path.to_string(),
+            key_reader,
+        }
+    }
+}
+
+impl Clone for KeyFileIterator {
+    fn clone(&self) -> Self {
+        KeyFileIterator::new(&self.key_path)
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        let cloned_iterator = KeyFileIterator::new(&source.key_path);
+        self.key_path = cloned_iterator.key_path.clone();
+        self.key_reader = cloned_iterator.key_reader;
+    }
+}
+
+impl Iterator for KeyFileIterator {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.key_reader
+            .next()
+            .map(|result| result.expect("an error occurred while reading key file"))
+    }
 }
 
 impl VigenereBuilder {
@@ -35,25 +88,28 @@ impl VigenereBuilder {
         Self
     }
 
-    pub fn with_key_string(self, key: &str) -> VigenereWantsMode<std::str::Bytes> {
+    pub fn with_key_string(self, key: &str) -> VigenereWantsMode {
         VigenereWantsMode {
-            key_iterator: key.bytes().cycle(),
+            key_iterator: KeyIterator::StringKey(key.bytes()).cycle(),
+        }
+    }
+
+    pub fn with_key_file(self, path: &str) -> VigenereWantsMode {
+        VigenereWantsMode {
+            key_iterator: KeyIterator::FileKey(KeyFileIterator::new(path)).cycle(),
         }
     }
 }
 
-impl<K> VigenereWantsMode<K>
-where
-    K: Clone + Iterator,
-{
-    pub fn encrypt(&self) -> VigenereWantsText<K> {
+impl<'key> VigenereWantsMode<'key> {
+    pub fn encrypt(&self) -> VigenereWantsText<'key> {
         VigenereWantsText {
             key_iterator: self.key_iterator.clone(),
             mode: ProcessingMode::Encryption,
         }
     }
 
-    pub fn decrypt(&self) -> VigenereWantsText<K> {
+    pub fn decrypt(&self) -> VigenereWantsText<'key> {
         VigenereWantsText {
             key_iterator: self.key_iterator.clone(),
             mode: ProcessingMode::Decryption,
@@ -61,19 +117,16 @@ where
     }
 }
 
-impl<K> VigenereWantsText<K>
-where
-    K: Clone + Iterator<Item = u8>,
-{
-    pub fn with_text_string(self, processed_text: &str) -> VigenereCipher<K> {
-        VigenereCipher {
+impl<'txt, 'key> VigenereWantsText<'key> {
+    pub fn with_text_string(self, processed_text: &'txt str) -> VigenereCipher<'txt, 'key> {
+        VigenereCipher::<'txt, 'key> {
             key_iterator: self.key_iterator,
             text_iterator: Box::new(processed_text.bytes()),
             mode: self.mode,
         }
     }
 
-    pub fn with_text_file<'txt, P>(self, processed_path: P) -> VigenereCipher<'txt, K>
+    pub fn with_text_file<P>(self, processed_path: P) -> VigenereCipher<'txt, 'key>
     where
         P: AsRef<Path>,
     {
@@ -88,10 +141,7 @@ where
     }
 }
 
-impl<'txt, K> Iterator for VigenereCipher<'txt, K>
-where
-    K: Clone + Iterator<Item = u8>,
-{
+impl<'txt, 'key> Iterator for VigenereCipher<'txt, 'key> {
     type Item = char;
 
     fn next(&mut self) -> Option<Self::Item> {
